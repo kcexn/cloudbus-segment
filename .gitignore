@@ -10,4 +10,4 @@ CMakeUserPresets.json
 .clangd
 
 # generated documentation
-docs/html/
+/docs/*/
