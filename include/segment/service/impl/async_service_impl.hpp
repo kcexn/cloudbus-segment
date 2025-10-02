@@ -94,7 +94,8 @@ auto async_service<Service>::start(std::mutex &mtx,
     service.start(static_cast<async_context &>(*this));
     while (poller.wait());
 
-    with_lock(std::unique_lock{mtx}, [&]() noexcept { return stop(isockets[1]); });
+    with_lock(std::unique_lock{mtx},
+              [&]() noexcept { return stop(isockets[1]); });
     cvar.notify_all();
   });
 }

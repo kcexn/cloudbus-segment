@@ -2,6 +2,7 @@ include(GoogleTest)
 
 set(TEST_NAMES
   test_async_context
+  test_generator
 )
 
 foreach(TEST_NAME IN LISTS TEST_NAMES)
