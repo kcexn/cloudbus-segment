@@ -170,12 +170,12 @@ public:
      * get post-increment like behavior, you must explicitly dereference,
      * then increment.
      *
-     * @example
-     * ```
+     * @par Example:
+     * @code{.cpp}
      * auto it = begin();
      * auto value = *it;
      * it++;
-     * ```
+     * @endcode
      */
     auto operator++(int) -> void;
 
