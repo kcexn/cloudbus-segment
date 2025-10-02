@@ -116,9 +116,9 @@ public:
 
   private:
     /** @brief Pointer to the currently yielded value. */
-    pointer_type value_;
+    pointer_type value_{nullptr};
     /** @brief Holds any exception thrown by the coroutine. */
-    std::exception_ptr exception_;
+    std::exception_ptr exception_{nullptr};
   };
 
   /**
