@@ -150,11 +150,10 @@ public:
 
     /**
      * @brief Compares the iterator with the end-of-sequence sentinel.
-     * @param iter The iterator to compare.
-     * @param s The sentinel to compare against
+     * @param sentinel The sentinel to compare against
      * @return True if the iterator has reached the end, false otherwise.
      */
-    auto operator==(sentinel_type /*s*/) const noexcept -> bool;
+    auto operator==(sentinel_type sentinel) const noexcept -> bool;
 
     /**
      * @brief Pre-increments the iterator to the next element.

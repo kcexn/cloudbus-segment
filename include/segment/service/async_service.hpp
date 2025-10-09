@@ -51,7 +51,7 @@ struct async_context : detail::immovable {
   class interrupt_type {
   public:
     /** @brief Calls the underlying interrupt. */
-    auto operator()() -> void;
+    auto operator()() const -> void;
     /** @brief Assigns a function to the underlying interrupt. */
     auto operator=(std::function<void()> func) noexcept -> interrupt_type &;
     /** @brief Tests to see if the interrupt has been assigned to. */

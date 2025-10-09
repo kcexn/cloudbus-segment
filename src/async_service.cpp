@@ -34,7 +34,7 @@ auto async_context::signal(int signum) -> void
   }
 }
 
-auto async_context::interrupt_type::operator()() -> void
+auto async_context::interrupt_type::operator()() const -> void
 {
   using namespace detail;
   auto func = with_lock(std::unique_lock{mtx_}, [&] { return fn_; });
