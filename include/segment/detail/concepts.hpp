@@ -21,7 +21,6 @@
 #ifndef CLOUDBUS_CONCEPTS_HPP
 #define CLOUDBUS_CONCEPTS_HPP
 #include <concepts>
-
 // Forward declarations
 namespace cloudbus::service {
 struct async_context;
@@ -32,7 +31,6 @@ struct async_context;
  * @brief The root namespace for all cloudbus components.
  */
 namespace cloudbus {
-
 template <typename S>
 concept ServiceLike = requires(S service, service::async_context &ctx) {
   { service.signal_handler(1) } noexcept -> std::same_as<void>;
