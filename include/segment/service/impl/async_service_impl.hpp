@@ -45,8 +45,7 @@ auto async_service<Service>::isr(async_scope &scope,
                    if (handle())
                      isr(scope, socket, handle);
                  }) |
-                 upon_error([](auto &&err) noexcept {}) |
-                 upon_stopped([]() noexcept {});
+                 upon_error([](auto &&err) noexcept {});
   scope.spawn(std::move(recvmsg));
 }
 

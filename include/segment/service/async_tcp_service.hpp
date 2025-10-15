@@ -30,15 +30,12 @@ namespace cloudbus::service {
  * @tparam StreamHandler The StreamHandler type that derives from
  * async_tcp_service.
  * @code
- * struct async_noop_service : public async_tcp_service<async_noop_service>
+ * struct noop_service : public async_tcp_service<noop_service>
  * {
- *   using Base = async_tcp_service<async_noop_service>;
- *   using Base::Base;
- *   using Base::signal_handler;
- *   using Base::start;
+ *   using Base = async_tcp_service<noop_service>;
  *
  *   template <typename T>
- *   explicit async_noop_service(socket_address<T> address): Base(address)
+ *   explicit noop_service(socket_address<T> address): Base(address)
  *   {}
  *
  *   auto operator()(async_context &ctx, const socket_dialog &socket,
