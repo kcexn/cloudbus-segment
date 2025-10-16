@@ -120,10 +120,10 @@ public:
     stop_ = [&] {
       using namespace stdexec;
       ctx.scope.request_stop();
-      auto sock = ctx.poller.emplace(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-      sender auto connect = io::connect(sock, address_) |
-                            then([sock](auto status) {}) |
-                            upon_error([](const auto &error) {});
+      sender auto connect =
+          io::connect(ctx.poller.emplace(AF_INET, SOCK_STREAM, IPPROTO_TCP),
+                      address_) |
+          then([](auto status) {}) | upon_error([](auto &&error) {});
       ctx.scope.spawn(std::move(connect));
     };
 
@@ -142,7 +142,7 @@ public:
                            reader(ctx, dialog, std::make_shared<readbuf>());
                            acceptor(ctx, socket);
                          }) |
-                         upon_error([](const auto &error) {});
+                         upon_error([](auto &&error) {});
 
     ctx.scope.spawn(std::move(accept));
   }
@@ -158,7 +158,7 @@ public:
 
     sender auto recvmsg =
         io::recvmsg(socket, rbuf->msg, 0) |
-        then([&, socket, rbuf](auto len) mutable {
+        then([&, socket, rbuf](auto &&len) mutable {
           if (!len)
             return;
 
@@ -167,7 +167,7 @@ public:
 
           reader(ctx, socket, std::move(rbuf));
         }) |
-        upon_error([](const auto &error) {});
+        upon_error([](auto &&error) {});
 
     ctx.scope.spawn(std::move(recvmsg));
   }
