@@ -91,11 +91,11 @@ TEST_F(AsyncTcpServiceTest, ReadTest)
     auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     addr->sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    connect(sock, addr);
+    ASSERT_EQ(connect(sock, addr), 0);
     ctx.poller.wait();
 
     auto buf = std::array<char, 1>{'x'};
-    sendmsg(sock, socket_message{.buffers = buf}, 0);
+    ASSERT_EQ(sendmsg(sock, socket_message{.buffers = buf}, 0), 1);
     ctx.poller.wait();
   }
 
@@ -240,7 +240,7 @@ TEST_F(AsyncTcpServiceTest, EchoTest)
     auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     addr->sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    connect(sock, addr);
+    ASSERT_EQ(connect(sock, addr), 0);
     ctx.poller.wait();
 
     auto buf = std::array<char, 1>{'x'};
@@ -251,7 +251,8 @@ TEST_F(AsyncTcpServiceTest, EchoTest)
 
     for (auto *it = alphabet; it != end; ++it)
     {
-      sendmsg(sock, socket_message{.buffers = std::span(it, 1)}, 0);
+      ASSERT_EQ(sendmsg(sock, socket_message{.buffers = std::span(it, 1)}, 0),
+                1);
       ctx.poller.wait();
       ASSERT_EQ(recvmsg(sock, msg, 0), 1);
       EXPECT_EQ(buf[0], *it);
