@@ -123,7 +123,7 @@ public:
     for (auto remaining = buf.size(), len = 0UL; remaining > 0;
          remaining -= len)
     {
-      len = std::min(remaining, static_cast<std::size_t>(epptr_ - pptr_));
+      len = std::min<size_type>(remaining, epptr_ - pptr_);
       auto *begin = buf.data() + (buf.size() - remaining);
 
       pptr_ = static_cast<std::byte *>(std::memcpy(pptr_, begin, len)) + len;
@@ -162,15 +162,14 @@ public:
   {
     for (size_type len = 0; n; n -= len)
     {
-      len = std::min(static_cast<size_type>(egptr_ - gptr_), n);
-      gptr_ += len;
-      if (egptr_ == eback_ + BUFSIZE)
+      len = std::min<size_type>(egptr_ - gptr_, n);
+      if ((gptr_ += len) == egptr_)
       {
-        auto &front = *queue_.erase(queue_.begin());
-        eback_ = egptr_ = gptr_ = front.data();
-      }
-      if (egptr_ == gptr_)
-      {
+        if (egptr_ == eback_ + BUFSIZE)
+        {
+          auto &front = *queue_.erase(queue_.begin());
+          eback_ = gptr_ = front.data();
+        }
         egptr_ = (eback_ == pbase_) ? pptr_ : eback_ + BUFSIZE;
       }
     }
