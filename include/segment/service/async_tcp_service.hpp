@@ -27,6 +27,11 @@ namespace cloudbus::service {
  * @note The default constructor of async_tcp_service is private
  * so async_tcp_service can't be accidentally constructed without
  * a proper stream handler.
+ * @details async_tcp_service is a CRTP class compliant with the ServiceLike
+ * concept. It must be used with an inheriting CRTP specialization that
+ * defines what the service should do with bytes it reads off the wire.
+ * See `noop_service` below for an example of how to specialize
+ * async_tcp_service.
  * @tparam StreamHandler The StreamHandler type that derives from
  * async_tcp_service.
  * @code
