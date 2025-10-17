@@ -39,28 +39,17 @@ namespace cloudbus::service {
  *   {}
  *
  *   auto operator()(async_context &ctx, const socket_dialog &socket,
- *                   std::span<const std::byte> buf) -> void
- *   {}
+ *                   const std::shared_ptr<readbuf> &rmsg,
+ *                   std::span<const std::byte> buf) -> bool
+ *   {
+ *     static constexpr auto blocked = false;
+ *     return blocked;
+ *   }
  * };
  * @endcode
  */
 template <typename StreamHandler> class async_tcp_service {
 private:
-  /** @brief A read context. */
-  struct readbuf {
-    /** @brief The read buffer size. */
-    static constexpr std::size_t BUFSIZE = 1024UL;
-    /** @brief The read buffer type. */
-    using buffer_type = std::array<std::byte, BUFSIZE>;
-    /** @brief The socket message type. */
-    using socket_message = io::socket::socket_message<>;
-
-    /** @brief The read buffer. */
-    buffer_type buffer{};
-    /** @brief The read socket message. */
-    socket_message msg{.buffers = buffer};
-  };
-
   /** @brief Stop the service. */
   std::function<void()> stop_;
 
@@ -73,10 +62,9 @@ protected:
   /**
    * @brief Socket address constructor.
    * @tparam T The socket address type.
+   * @param address The service address to bind.
    */
-  template <typename T>
-  explicit async_tcp_service(socket_address<T> address) : address_{address}
-  {}
+  template <typename T> explicit async_tcp_service(socket_address<T> address);
 
   /** @brief Service address. */
   // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
@@ -92,86 +80,51 @@ public:
   /** @brief Re-export the async_context signals. */
   using enum async_context::signals;
 
-  /** @brief handle signals. */
-  auto signal_handler(int signum) const noexcept -> void
-  {
-    if (signum == terminate && stop_)
-      stop_();
+  /** @brief A read context. */
+  struct readbuf {
+    /** @brief The read buffer size. */
+    static constexpr std::size_t BUFSIZE = 1024UL;
+    /** @brief The read buffer type. */
+    using buffer_type = std::array<std::byte, BUFSIZE>;
+    /** @brief The socket message type. */
+    using socket_message = io::socket::socket_message<>;
+
+    /** @brief The read buffer. */
+    buffer_type buffer{};
+    /** @brief The read socket message. */
+    socket_message msg{.buffers = buffer};
   };
-  /** @brief Start the service on the context. */
-  auto start(async_context &ctx) noexcept -> void
-  {
-    using namespace io;
-    using namespace io::socket;
 
-    auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  /**
+   * @brief handle signals.
+   * @param signum The signal number to handle.
+   */
+  auto signal_handler(int signum) const noexcept -> void;
 
-    auto reuse = socket_option<int>(1);
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reuse))
-      return; // GCOVR_EXCL_LINE
+  /**
+   * @brief Start the service on the context.
+   * @param ctx The async context to start the service on.
+   */
+  auto start(async_context &ctx) noexcept -> void;
 
-    if (bind(sock, address_))
-      return; // GCOVR_EXCL_LINE
-    address_ = getsockname(sock, address_);
+  /**
+   * @brief Accept new connections on a listening socket.
+   * @param ctx The async context to start the acceptor on.
+   * @param socket The socket to listen for connections on.
+   */
+  auto acceptor(async_context &ctx, const socket_dialog &socket) -> void;
 
-    if (listen(sock, SOMAXCONN))
-      return; // GCOVR_EXCL_LINE
-
-    stop_ = [&] {
-      using namespace stdexec;
-      ctx.scope.request_stop();
-      sender auto connect =
-          io::connect(ctx.poller.emplace(AF_INET, SOCK_STREAM, IPPROTO_TCP),
-                      address_) |
-          then([](auto status) {}) | upon_error([](auto &&error) {});
-      ctx.scope.spawn(std::move(connect));
-    };
-
-    acceptor(ctx, ctx.poller.emplace(std::move(sock)));
-  }
-
-  /** @brief Accept new connections on a listening socket. */
-  auto acceptor(async_context &ctx, const socket_dialog &socket) -> void
-  {
-    using namespace stdexec;
-    if (ctx.scope.get_stop_token().stop_requested())
-      return;
-
-    sender auto accept = io::accept(socket) | then([&, socket](auto accepted) {
-                           auto [dialog, addr] = std::move(accepted);
-                           reader(ctx, dialog, std::make_shared<readbuf>());
-                           acceptor(ctx, socket);
-                         }) |
-                         upon_error([](auto &&error) {});
-
-    ctx.scope.spawn(std::move(accept));
-  }
-
-  /** @brief Read data from a connected socket. */
+  /**
+   * @brief Read data from a connected socket.
+   * @param ctx The async context to start the reader on.
+   * @param socket the socket to read data from.
+   * @param rbuf A shared pointer to a mutable read buffer.
+   */
   auto reader(async_context &ctx, const socket_dialog &socket,
-              std::shared_ptr<readbuf> rbuf) -> void
-  {
-    using namespace stdexec;
-    using namespace io::socket;
-    if (ctx.scope.get_stop_token().stop_requested())
-      return;
-
-    sender auto recvmsg =
-        io::recvmsg(socket, rbuf->msg, 0) |
-        then([&, socket, rbuf](auto &&len) mutable {
-          if (!len)
-            return;
-
-          auto &handle = static_cast<StreamHandler &>(*this);
-          handle(ctx, socket, std::span(rbuf->buffer.data(), len));
-
-          reader(ctx, socket, std::move(rbuf));
-        }) |
-        upon_error([](auto &&error) {});
-
-    ctx.scope.spawn(std::move(recvmsg));
-  }
+              std::shared_ptr<readbuf> rbuf) -> void;
 };
 
 } // namespace cloudbus::service
+
+#include "impl/async_tcp_service_impl.hpp" // IWYU pragma: export
 #endif
