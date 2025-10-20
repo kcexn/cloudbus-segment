@@ -31,8 +31,7 @@ template <ServiceLike Service>
 template <typename Fn>
   requires std::is_invocable_r_v<bool, Fn>
 auto async_service<Service>::isr(async_scope &scope,
-                                 const socket_dialog &socket,
-                                 Fn handle) -> void
+                                 const socket_dialog &socket, Fn handle) -> void
 {
   using namespace io::socket;
   using namespace stdexec;

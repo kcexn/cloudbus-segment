@@ -355,8 +355,9 @@ TEST_F(AsyncTcpServiceTest, EchoBlockTest)
 TEST_F(AsyncTcpServiceTest, AsyncServiceTest)
 {
   using namespace io::socket;
+  using service_type = async_service<echo_block_service>;
 
-  auto list = std::list<async_service<echo_block_service>>{};
+  auto list = std::list<service_type>{};
   auto &service = list.emplace_back();
 
   std::mutex mtx;
@@ -368,8 +369,29 @@ TEST_F(AsyncTcpServiceTest, AsyncServiceTest)
   service.start(mtx, cvar, addr);
   {
     auto lock = std::unique_lock{mtx};
-    cvar.wait(lock, [&] { return static_cast<bool>(service.interrupt); });
+    cvar.wait(lock, [&] { return service.interrupt || service.stopped; });
   }
   ASSERT_TRUE(static_cast<bool>(service.interrupt));
+  {
+    using namespace io;
+    auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    addr->sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    ASSERT_EQ(connect(sock, addr), 0);
+
+    auto buf = std::array<char, 1>{'x'};
+    auto msg = socket_message{.buffers = buf};
+
+    const char *alphabet = "abcdefghijklmnopqrstuvwxyz";
+    auto *end = alphabet + 26;
+
+    for (auto *it = alphabet; it != end; ++it)
+    {
+      ASSERT_EQ(sendmsg(sock, socket_message{.buffers = std::span(it, 1)}, 0),
+                1);
+      ASSERT_EQ(recvmsg(sock, msg, 0), 1);
+      EXPECT_EQ(buf[0], *it);
+    }
+  }
 }
 // NOLINTEND
