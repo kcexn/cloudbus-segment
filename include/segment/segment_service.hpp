@@ -27,12 +27,12 @@ namespace cloudbus::segment {
 template <typename TCPStreamHandler>
 using service_base = service::async_tcp_service<TCPStreamHandler>;
 
+/** @brief The Cloudbus segment service. */
 struct segment_service : public service_base<segment_service> {
   /** @brief The base class. */
   using Base = service_base<segment_service>;
   /** @brief The socket message type. */
   using socket_message = io::socket::socket_message<>;
-
   /**
    * @brief Constructs segment_service on the socket address.
    * @tparam T The type of the socket_address.
@@ -41,13 +41,28 @@ struct segment_service : public service_base<segment_service> {
   template <typename T>
   explicit segment_service(socket_address<T> address) noexcept : Base(address)
   {}
-
+  /**
+   * @brief Initializes socket options.
+   * @param sock The socket to initialize.
+   */
   auto initialize(const socket_handle &sock) -> void;
-
+  /**
+   * @brief Services the incoming socket_message.
+   * @param ctx The asynchronous context of the message.
+   * @param socket The socket that the message was read from.
+   * @param rctx The read context that manages the read buffer lifetime.
+   * @param msg The message that was read from the socket.
+   */
   auto service(async_context &ctx, const socket_dialog &socket,
                const std::shared_ptr<read_context> &rctx,
                const socket_message &msg) -> void;
-
+  /**
+   * @brief Receives the bytes emitted by the service_base reader.
+   * @param ctx The asynchronous context of the message.
+   * @param socket The socket that the message was read from.
+   * @param rctx The read context that manages the read buffer lifetime.
+   * @param buf The bytes that were read from the socket.
+   */
   auto operator()(async_context &ctx, const socket_dialog &socket,
                   const std::shared_ptr<read_context> &rctx,
                   std::span<const std::byte> buf) -> void;
