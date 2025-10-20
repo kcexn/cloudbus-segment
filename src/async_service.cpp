@@ -27,11 +27,9 @@ namespace cloudbus::service {
 auto async_context::signal(int signum) -> void
 {
   assert(signum >= 0 && signum < END && "signum must be a valid signal.");
+  sigmask.fetch_or(1 << signum);
   if (interrupt)
-  {
-    sigmask.fetch_or(1 << signum);
     interrupt();
-  }
 }
 
 auto async_context::interrupt_type::operator()() const -> void

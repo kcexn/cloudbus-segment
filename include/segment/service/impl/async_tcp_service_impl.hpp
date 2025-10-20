@@ -26,7 +26,7 @@ namespace cloudbus::service {
 template <typename TCPStreamHandler>
 template <typename T>
 async_tcp_service<TCPStreamHandler>::async_tcp_service(
-    socket_address<T> address)
+    socket_address<T> address) noexcept
     : address_{address}
 {}
 

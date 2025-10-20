@@ -5,6 +5,7 @@ set(TEST_NAMES
   test_generator
   test_async_tcp_service
   test_mock_socketpair
+  test_segment_service
 )
 
 foreach(TEST_NAME IN LISTS TEST_NAMES)

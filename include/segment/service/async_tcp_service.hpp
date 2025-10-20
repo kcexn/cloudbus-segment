@@ -121,7 +121,8 @@ protected:
    * @tparam T The socket address type.
    * @param address The service address to bind.
    */
-  template <typename T> explicit async_tcp_service(socket_address<T> address);
+  template <typename T>
+  explicit async_tcp_service(socket_address<T> address) noexcept;
 
 private:
   /**

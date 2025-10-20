@@ -40,12 +40,17 @@ auto async_service<Service>::isr(async_scope &scope,
   static auto buffer = std::array<char, BUFSIZE>{};
   static auto msg = socket_message{.buffers = buffer};
 
+  if (!handle())
+  {
+    scope.request_stop();
+    return;
+  }
+
   auto recvmsg = io::recvmsg(socket, msg, 0) |
-                 then([=, &scope](auto len) noexcept {
-                   if (handle())
-                     isr(scope, socket, std::move(handle));
-                 }) |
-                 upon_error([](auto &&err) noexcept {});
+                  then([=, &scope](auto len) noexcept {
+                    isr(scope, socket, std::move(handle));
+                  }) |
+                  upon_error([](auto &&err) noexcept {});
   scope.spawn(std::move(recvmsg));
 }
 
@@ -74,7 +79,7 @@ auto async_service<Service>::start(std::mutex &mtx,
     {
       with_lock(std::unique_lock{mtx}, [&]() noexcept {
         interrupt = [socket = isockets[1]]() noexcept {
-          static auto message = std::array<char, 1>{};
+          static constexpr auto message = std::array<char, 1>{};
           io::sendmsg(socket, socket_message{.buffers = message}, 0);
         };
       });

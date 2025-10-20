@@ -28,6 +28,7 @@ add_custom_target(coverage
     COMMAND ${GCOVR_EXECUTABLE}
       --root "${CMAKE_SOURCE_DIR}"
       --filter "${CMAKE_SOURCE_DIR}/(src|include)/.*"
+      --exclude "${CMAKE_SOURCE_DIR}/src/main\.cpp"
       --html --html-details
       --output "${CMAKE_BINARY_DIR}/coverage/index.html"
       --print-summary
@@ -44,6 +45,7 @@ add_custom_target(coverage-xml
     COMMAND ${GCOVR_EXECUTABLE}
       --root "${CMAKE_SOURCE_DIR}"
       --filter "${CMAKE_SOURCE_DIR}/(src|include)/.*"
+      --exclude "${CMAKE_SOURCE_DIR}/src/main\.cpp"
       --xml
       --output ${CMAKE_BINARY_DIR}/coverage/coverage.xml
       --print-summary
