@@ -148,8 +148,12 @@ private:
 
   /** @brief Stop the service. */
   std::function<void()> stop_;
-  /** @brief The service address. */
-  socket_address<sockaddr_in> address_;
+  /**
+   * @brief The service address.
+   * @note sockaddr_in6 is large enough to store either an IPV4 or an IPV6
+   * address.
+   */
+  socket_address<sockaddr_in6> address_;
 };
 
 } // namespace cloudbus::service
