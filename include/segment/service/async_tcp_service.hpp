@@ -24,14 +24,16 @@
 namespace cloudbus::service {
 /**
  * @brief A ServiceLike Async TCP Service.
- * @note The default constructor of async_tcp_service is private
- * so async_tcp_service can't be accidentally constructed without
- * a proper stream handler.
- * @details async_tcp_service is a CRTP class compliant with the ServiceLike
- * concept. It must be used with an inheriting CRTP specialization that
- * defines what the service should do with bytes it reads off the wire.
- * See `noop_service` below for an example of how to specialize
- * async_tcp_service.
+ * @note The default constructor of async_tcp_service is protected
+ * so async_tcp_service can't be constructed without a stream handler
+ * (which would be UB).
+ * @details async_tcp_service is a CRTP base class compliant with the
+ * ServiceLike concept. It must be used with an inheriting CRTP specialization
+ * that defines what the service should do with bytes it reads off the wire.
+ * StreamHandler must define an operator() overload that eventually calls
+ * reader to restart the read loop. It also optionally specifies an initialize
+ * member that can be used to configure the service socket. See `noop_service`
+ * below for an example of how to specialize async_tcp_service.
  * @tparam StreamHandler The StreamHandler type that derives from
  * async_tcp_service.
  * @code
@@ -43,50 +45,36 @@ namespace cloudbus::service {
  *   explicit noop_service(socket_address<T> address): Base(address)
  *   {}
  *
+ *   auto initialize(const socket_handle &socket) -> void {}; // Optional.
+ *
  *   auto operator()(async_context &ctx, const socket_dialog &socket,
- *                   const std::shared_ptr<readbuf> &rmsg,
- *                   std::span<const std::byte> buf) -> bool
+ *                   std::shared_ptr<readbuf> rmsg,
+ *                   std::span<const std::byte> buf) -> void
  *   {
- *     static constexpr auto blocked = false;
- *     return blocked;
+ *     reader(ctx, socket, std::move(rmsg));
  *   }
  * };
  * @endcode
  */
-template <typename StreamHandler> class async_tcp_service {
-private:
-  /** @brief Stop the service. */
-  std::function<void()> stop_;
-
-protected:
-  /** @brief socket_address template type. */
-  template <typename T> using socket_address = io::socket::socket_address<T>;
-
-  /** @brief Default constructor. */
-  async_tcp_service() = default;
-  /**
-   * @brief Socket address constructor.
-   * @tparam T The socket address type.
-   * @param address The service address to bind.
-   */
-  template <typename T> explicit async_tcp_service(socket_address<T> address);
-
-  /** @brief Service address. */
-  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
-  socket_address<sockaddr_in> address_;
-
+template <typename TCPStreamHandler> class async_tcp_service {
 public:
+  /** @brief Templated socket address type. */
+  template <typename T> using socket_address = io::socket::socket_address<T>;
+  /** @brief The async context type. */
+  using async_context = service::async_context;
   /** @brief The async scope type. */
   using async_scope = async_context::async_scope;
   /** @brief The io multiplexer type. */
   using multiplexer_type = async_context::multiplexer;
+  /** @brief The socket handle type. */
+  using socket_handle = io::socket::socket_handle;
   /** @brief The socket dialog type. */
   using socket_dialog = io::socket::socket_dialog<multiplexer_type>;
   /** @brief Re-export the async_context signals. */
   using enum async_context::signals;
 
   /** @brief A read context. */
-  struct readbuf {
+  struct read_context {
     /** @brief The read buffer size. */
     static constexpr std::size_t BUFSIZE = 1024UL;
     /** @brief The read buffer type. */
@@ -105,31 +93,66 @@ public:
    * @param signum The signal number to handle.
    */
   auto signal_handler(int signum) const noexcept -> void;
-
   /**
    * @brief Start the service on the context.
    * @param ctx The async context to start the service on.
    */
   auto start(async_context &ctx) noexcept -> void;
-
   /**
    * @brief Accept new connections on a listening socket.
    * @param ctx The async context to start the acceptor on.
    * @param socket The socket to listen for connections on.
    */
   auto acceptor(async_context &ctx, const socket_dialog &socket) -> void;
-
   /**
    * @brief Read data from a connected socket.
    * @param ctx The async context to start the reader on.
    * @param socket the socket to read data from.
-   * @param rbuf A shared pointer to a mutable read buffer.
+   * @param rmsg A shared pointer to a mutable read buffer.
    */
   auto reader(async_context &ctx, const socket_dialog &socket,
-              std::shared_ptr<readbuf> rbuf) -> void;
+              std::shared_ptr<read_context> rmsg) -> void;
+
+protected:
+  /** @brief Default constructor. */
+  async_tcp_service() = default;
+  /**
+   * @brief Socket address constructor.
+   * @tparam T The socket address type.
+   * @param address The service address to bind.
+   */
+  template <typename T> explicit async_tcp_service(socket_address<T> address);
+
+private:
+  /**
+   * @brief Emits a span of bytes buf read from socket that must be handled by
+   * the derived stream handler.
+   * @param ctx The async context.
+   * @param socket The socket the bytes in buf were read from.
+   * @param rmsg The buffer and socket message associated with the socket
+   * reader.
+   * @param buf The data read from the socket in the last recvmsg.
+   */
+  auto emit(async_context &ctx, const socket_dialog &socket,
+            std::shared_ptr<read_context> rmsg,
+            std::span<const std::byte> buf) -> void;
+
+  /**
+   * @brief Initializes the server socket with options. Delegates to
+   * StreamHandler::initialize if it is defined.
+   * @details The base class initialize_ always sets the SO_REUSEADDR flag,
+   * so that the TCP server can be restarted quickly.
+   * @param socket The socket handle to configure.
+   */
+  auto initialize_(const socket_handle &socket) -> void;
+
+  /** @brief Stop the service. */
+  std::function<void()> stop_;
+  /** @brief The service address. */
+  socket_address<sockaddr_in> address_;
 };
 
 } // namespace cloudbus::service
 
 #include "impl/async_tcp_service_impl.hpp" // IWYU pragma: export
-#endif
+#endif                                     // CLOUDBUS_ASYNC_TCP_SERVICE_HPP

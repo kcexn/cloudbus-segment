@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 
 #include <cassert>
-#include <functional>
 #include <list>
 
 #include <arpa/inet.h>
@@ -35,13 +34,11 @@ struct async_noop_service : public async_tcp_service<async_noop_service> {
   {}
 
   auto operator()(async_context &ctx, const socket_dialog &socket,
-                  const std::shared_ptr<readbuf> &rmsg,
-                  std::span<const std::byte> buf) -> bool
+                  std::shared_ptr<read_context> rmsg,
+                  std::span<const std::byte> buf) -> void
   {
-    static constexpr auto blocked = false;
-
     msg.insert(msg.end(), buf.begin(), buf.end());
-    return blocked;
+    reader(ctx, socket, std::move(rmsg));
   }
 
   std::vector<std::byte> msg;
@@ -191,15 +188,13 @@ struct echo_service : public async_tcp_service<echo_service> {
   {}
 
   auto operator()(async_context &ctx, const socket_dialog &socket,
-                  const std::shared_ptr<readbuf> &rmsg,
-                  std::span<const std::byte> buf) -> bool
+                  std::shared_ptr<read_context> rmsg,
+                  std::span<const std::byte> buf) -> void
   {
-    static constexpr auto blocked = false;
-
     queue.append(buf);
     if (queue.size() == buf.size())
       echo(ctx, socket);
-    return blocked;
+    reader(ctx, socket, std::move(rmsg));
   }
 
   auto echo(async_context &ctx, const socket_dialog &socket) -> void
@@ -279,8 +274,11 @@ struct echo_block_service : public async_tcp_service<echo_block_service> {
   explicit echo_block_service(socket_address<T> address) : Base(address)
   {}
 
+  auto initialize(const socket_handle &sock) -> void {}
+
   auto echo(async_context &ctx, const socket_dialog &socket,
-            const std::shared_ptr<readbuf> &rmsg, socket_message msg) -> void
+            const std::shared_ptr<read_context> &rmsg,
+            socket_message msg) -> void
   {
     using namespace io::socket;
     using namespace stdexec;
@@ -299,13 +297,10 @@ struct echo_block_service : public async_tcp_service<echo_block_service> {
   }
 
   auto operator()(async_context &ctx, const socket_dialog &socket,
-                  const std::shared_ptr<readbuf> &rmsg,
-                  std::span<const std::byte> buf) -> bool
+                  std::shared_ptr<read_context> rmsg,
+                  std::span<const std::byte> buf) -> void
   {
-    static constexpr auto blocked = true;
-
     echo(ctx, socket, rmsg, {.buffers = buf});
-    return blocked;
   }
 };
 
