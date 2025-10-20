@@ -32,69 +32,70 @@ template <typename Fn>
   requires std::is_invocable_r_v<bool, Fn>
 auto async_service<Service>::isr(async_scope &scope,
                                  const socket_dialog &socket,
-                                 const Fn &handle) -> void
+                                 Fn handle) -> void
 {
   using namespace io::socket;
   using namespace stdexec;
 
-  static constexpr std::size_t bufsize = 256;
-  static auto buffer = std::array<char, bufsize>{};
+  static constexpr auto BUFSIZE = 1024UL;
+  static auto buffer = std::array<char, BUFSIZE>{};
   static auto msg = socket_message{.buffers = buffer};
 
-  auto recvmsg = io::recvmsg(socket, msg, 0) | then([=, &scope](auto len) {
+  auto recvmsg = io::recvmsg(socket, msg, 0) |
+                 then([=, &scope](auto len) noexcept {
                    if (handle())
-                     isr(scope, socket, handle);
+                     isr(scope, socket, std::move(handle));
                  }) |
                  upon_error([](auto &&err) noexcept {});
   scope.spawn(std::move(recvmsg));
 }
 
 template <ServiceLike Service>
-auto async_service<Service>::stop(int socket) noexcept -> void
+auto async_service<Service>::stop(socket_type socket) noexcept -> void
 {
   interrupt = std::function<void()>{};
   stopped = true;
-  io::socket::close(socket);
+  if (socket != io::socket::INVALID_SOCKET)
+    io::socket::close(socket);
 }
 
 template <ServiceLike Service>
+template <typename... Args>
 auto async_service<Service>::start(std::mutex &mtx,
-                                   std::condition_variable &cvar) -> void
+                                   std::condition_variable &cvar,
+                                   Args &&...args) -> void
 {
   server_ = std::thread([&]() noexcept {
     using namespace detail;
-    auto service = Service{};
-    auto isockets = std::array<int, 2>{};
+    using namespace io::socket;
 
-    with_lock(std::unique_lock{mtx}, [&]() noexcept {
-      using namespace io::socket;
-      if (::socketpair(AF_UNIX, SOCK_STREAM, 0, isockets.data()))
-        return stop(isockets[1]); // GCOVR_EXCL_LINE
+    auto service = Service{std::forward<Args>(args)...};
+    auto isockets = std::array<socket_type, 2>{INVALID_SOCKET, INVALID_SOCKET};
+    if (!socketpair(AF_UNIX, SOCK_STREAM, 0, isockets.data()))
+    {
+      with_lock(std::unique_lock{mtx}, [&]() noexcept {
+        interrupt = [socket = isockets[1]]() noexcept {
+          static auto message = std::array<char, 1>{};
+          io::sendmsg(socket, socket_message{.buffers = message}, 0);
+        };
+      });
 
-      interrupt = [socket = isockets[1]]() noexcept {
-        static auto message = std::array<char, 1>{};
-        io::sendmsg(socket, socket_message{.buffers = message}, 0);
-      };
-    });
-    cvar.notify_all();
-    if (stopped)
-      return; // GCOVR_EXCL_LINE
+      isr(scope, poller.emplace(isockets[0]), [&]() noexcept {
+        auto sigmask_ = sigmask.exchange(0);
+        for (int signum = 0; auto mask = (sigmask_ >> signum); ++signum)
+        {
+          if (mask & (1 << 0))
+            service.signal_handler(signum);
+        }
+        return !(sigmask_ & (1 << terminate));
+      });
+      cvar.notify_all();
 
-    isr(scope, poller.emplace(isockets[0]), [&]() noexcept {
-      auto sigmask_ = sigmask.exchange(0);
-      for (int signum = 0; auto mask = (sigmask_ >> signum); ++signum)
-      {
-        if (mask & (1 << 0))
-          service.signal_handler(signum);
-      }
-      return !(sigmask_ & (1 << terminate));
-    });
+      service.start(static_cast<async_context &>(*this));
+      while (poller.wait());
+    }
 
-    service.start(static_cast<async_context &>(*this));
-    while (poller.wait());
-
-    with_lock(std::unique_lock{mtx},
-              [&]() noexcept { return stop(isockets[1]); });
+    with_lock(std::unique_lock{mtx}, [&]() noexcept { stop(isockets[1]); });
     cvar.notify_all();
   });
 }

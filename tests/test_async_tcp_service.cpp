@@ -351,4 +351,25 @@ TEST_F(AsyncTcpServiceTest, EchoBlockTest)
   ctx.signal(ctx.terminate);
   while (ctx.poller.wait());
 }
+
+TEST_F(AsyncTcpServiceTest, AsyncServiceTest)
+{
+  using namespace io::socket;
+
+  auto list = std::list<async_service<echo_block_service>>{};
+  auto &service = list.emplace_back();
+
+  std::mutex mtx;
+  std::condition_variable cvar;
+  auto addr = socket_address<sockaddr_in>();
+  addr->sin_family = AF_INET;
+  addr->sin_port = htons(8080);
+
+  service.start(mtx, cvar, addr);
+  {
+    auto lock = std::unique_lock{mtx};
+    cvar.wait(lock, [&] { return static_cast<bool>(service.interrupt); });
+  }
+  ASSERT_TRUE(static_cast<bool>(service.interrupt));
+}
 // NOLINTEND

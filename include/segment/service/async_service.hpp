@@ -97,6 +97,7 @@ struct async_context : detail::immovable {
 template <ServiceLike Service> class async_service : public async_context {
   using socket_dialog =
       io::socket::socket_dialog<io::execution::poll_multiplexer>;
+  using socket_type = io::socket::native_socket_type;
 
   /**
    * @brief An interrupt service routine.
@@ -112,10 +113,13 @@ template <ServiceLike Service> class async_service : public async_context {
   template <typename Fn>
     requires std::is_invocable_r_v<bool, Fn>
   static auto isr(async_scope &scope, const socket_dialog &socket,
-                  const Fn &handle) -> void;
+                  Fn handle) -> void;
 
-  /** @brief Called when the async_service is stopped. */
-  auto stop(int socket) noexcept -> void;
+  /**
+   * @brief Called when the async_service is stopped.
+   * @param socket An interrupt socket that needs to be closed.
+   */
+  auto stop(socket_type socket) noexcept -> void;
 
 public:
   /** @brief Default constructor. */
@@ -131,15 +135,17 @@ public:
 
   /**
    * @brief Start the asynchronous service.
-   *
-   * This starts the provided service in a separate thread
+   * @details This starts the provided service in a separate thread
    * with the provided asynchronous context.
-   *
+   * @tparam Args Argument types for constructing the Service.
    * @param mtx A mutex for synchronization with the parent thread.
    * @param cvar A condition variable for synchronization with the parent
    *             thread.
+   * @param args The arguments to forward to the Service constructor.
    */
-  auto start(std::mutex &mtx, std::condition_variable &cvar) -> void;
+  template <typename... Args>
+  auto start(std::mutex &mtx, std::condition_variable &cvar,
+             Args &&...args) -> void;
 
   /** @brief The destructor signals the thread before joining it. */
   ~async_service();
