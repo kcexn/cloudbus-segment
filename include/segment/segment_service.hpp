@@ -20,7 +20,7 @@
 #pragma once
 #ifndef CLOUDBUS_SEGMENT_SERVICE_HPP
 #define CLOUDBUS_SEGMENT_SERVICE_HPP
-#include <segment/service/async_tcp_service.hpp>
+#include <net/service/async_tcp_service.hpp>
 /** @namespace For cloudbus segment definitions. */
 namespace cloudbus::segment {
 /** @brief The service type to use. */

@@ -45,6 +45,7 @@ auto segment_service::operator()(async_context &ctx,
                                  const std::shared_ptr<read_context> &rctx,
                                  std::span<const std::byte> buf) -> void
 {
-  service(ctx, socket, rctx, {.buffers = buf});
+  if (rctx)
+    service(ctx, socket, rctx, {.buffers = buf});
 }
 } // namespace cloudbus::segment

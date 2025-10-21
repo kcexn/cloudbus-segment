@@ -33,7 +33,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME cbnet
   GITHUB_REPOSITORY kcexn/cloudbus-net
-  GIT_TAG v0.1.1
+  GIT_TAG v0.1.2
   OPTIONS
   "CB_NET_BUILD_EXAMPLES OFF"
   "CB_NET_BUILD_TESTING OFF"
