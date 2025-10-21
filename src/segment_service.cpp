@@ -20,7 +20,11 @@
 #include "segment/segment_service.hpp"
 namespace cloudbus::segment {
 
-auto segment_service::initialize(const socket_handle &sock) -> void {}
+auto segment_service::initialize(const socket_handle &sock) noexcept
+    -> std::error_code
+{
+  return {};
+}
 
 auto segment_service::service(async_context &ctx, const socket_dialog &socket,
                               const std::shared_ptr<read_context> &rctx,

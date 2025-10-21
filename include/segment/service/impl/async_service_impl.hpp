@@ -47,10 +47,10 @@ auto async_service<Service>::isr(async_scope &scope,
   }
 
   auto recvmsg = io::recvmsg(socket, msg, 0) |
-                  then([=, &scope](auto len) noexcept {
-                    isr(scope, socket, std::move(handle));
-                  }) |
-                  upon_error([](auto &&err) noexcept {});
+                 then([=, &scope](auto len) noexcept {
+                   isr(scope, socket, std::move(handle));
+                 }) |
+                 upon_error([](auto &&err) noexcept {});
   scope.spawn(std::move(recvmsg));
 }
 

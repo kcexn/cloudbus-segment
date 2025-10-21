@@ -45,7 +45,8 @@ struct segment_service : public service_base<segment_service> {
    * @brief Initializes socket options.
    * @param sock The socket to initialize.
    */
-  auto initialize(const socket_handle &sock) -> void;
+  [[nodiscard]] static auto
+  initialize(const socket_handle &sock) noexcept -> std::error_code;
   /**
    * @brief Services the incoming socket_message.
    * @param ctx The asynchronous context of the message.

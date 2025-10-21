@@ -144,8 +144,11 @@ private:
    * @details The base class initialize_ always sets the SO_REUSEADDR flag,
    * so that the TCP server can be restarted quickly.
    * @param socket The socket handle to configure.
+   * @return A default constructed error code if successful, otherwise a system
+   * error code.
    */
-  auto initialize_(const socket_handle &socket) -> void;
+  [[nodiscard]] auto
+  initialize_(const socket_handle &socket) -> std::error_code;
 
   /** @brief Stop the service. */
   std::function<void()> stop_;

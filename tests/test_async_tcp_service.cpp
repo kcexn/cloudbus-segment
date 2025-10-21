@@ -274,7 +274,15 @@ struct echo_block_service : public async_tcp_service<echo_block_service> {
   explicit echo_block_service(socket_address<T> address) : Base(address)
   {}
 
-  auto initialize(const socket_handle &sock) -> void {}
+  bool initialized = false;
+  auto initialize(const socket_handle &sock) -> std::error_code
+  {
+    if (initialized)
+      return std::make_error_code(std::errc::invalid_argument);
+
+    initialized = true;
+    return {};
+  }
 
   auto echo(async_context &ctx, const socket_dialog &socket,
             const std::shared_ptr<read_context> &rmsg,
@@ -323,8 +331,12 @@ TEST_F(AsyncTcpServiceTest, EchoBlockTest)
     }
   };
 
+  ASSERT_FALSE(service.initialized);
   service.start(ctx);
   {
+    ASSERT_TRUE(service.initialized);
+    ASSERT_FALSE(ctx.scope.get_stop_token().stop_requested());
+
     using namespace io;
     auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     addr->sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -347,6 +359,33 @@ TEST_F(AsyncTcpServiceTest, EchoBlockTest)
       EXPECT_EQ(buf[0], *it);
     }
   }
+
+  ctx.signal(ctx.terminate);
+  while (ctx.poller.wait());
+}
+
+TEST_F(AsyncTcpServiceTest, TestInitializeError)
+{
+  using namespace io::socket;
+
+  auto ctx = async_context();
+  auto addr = socket_address<sockaddr_in>();
+  addr->sin_family = AF_INET;
+  addr->sin_port = htons(8080);
+  auto service = echo_block_service(addr);
+  service.initialized = true;
+
+  ctx.interrupt = [&] {
+    auto sigmask = ctx.sigmask.exchange(0);
+    for (int signum = 0; auto mask = (sigmask >> signum); ++signum)
+    {
+      if (mask & (1 << 0))
+        service.signal_handler(signum);
+    }
+  };
+
+  service.start(ctx);
+  EXPECT_TRUE(ctx.scope.get_stop_token().stop_requested());
 
   ctx.signal(ctx.terminate);
   while (ctx.poller.wait());

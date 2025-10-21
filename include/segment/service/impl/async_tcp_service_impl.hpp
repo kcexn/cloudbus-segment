@@ -18,11 +18,11 @@
  * @brief This file defines an asynchronous tcp service.
  */
 #pragma once
+#include <system_error>
 #ifndef CLOUDBUS_ASYNC_TCP_SERVICE_IMPL_HPP
 #define CLOUDBUS_ASYNC_TCP_SERVICE_IMPL_HPP
 #include "segment/service/async_tcp_service.hpp"
 namespace cloudbus::service {
-
 template <typename TCPStreamHandler>
 template <typename T>
 async_tcp_service<TCPStreamHandler>::async_tcp_service(
@@ -46,7 +46,11 @@ auto async_tcp_service<TCPStreamHandler>::start(async_context &ctx) noexcept
   using namespace io::socket;
 
   auto sock = socket_handle(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  initialize_(sock);
+  if (auto error = initialize_(sock))
+  {
+    ctx.scope.request_stop();
+    return;
+  }
 
   stop_ = [&] {
     using namespace stdexec;
@@ -115,7 +119,7 @@ auto async_tcp_service<TCPStreamHandler>::emit(
 
 template <typename TCPStreamHandler>
 auto async_tcp_service<TCPStreamHandler>::initialize_(
-    const socket_handle &socket) -> void
+    const socket_handle &socket) -> std::error_code
 {
   using namespace io;
   using namespace io::socket;
@@ -123,23 +127,28 @@ auto async_tcp_service<TCPStreamHandler>::initialize_(
   if (auto reuse = socket_option<int>(1);
       setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, reuse))
   {
-    return; // GCOVR_EXCL_LINE
+    return {errno, std::system_category()};
   }
 
   if constexpr (requires(TCPStreamHandler handler) {
-                  handler.initialize(socket);
+                  {
+                    handler.initialize(socket)
+                  } -> std::same_as<std::error_code>;
                 })
   {
-    auto &handler = static_cast<TCPStreamHandler &>(*this);
-    handler.initialize(socket);
+    if (auto error = static_cast<TCPStreamHandler *>(this)->initialize(socket))
+      return error;
   }
 
   if (bind(socket, address_))
-    return; // GCOVR_EXCL_LINE
+    return {errno, std::system_category()};
+
   address_ = getsockname(socket, address_);
 
   if (listen(socket, SOMAXCONN))
-    return; // GCOVR_EXCL_LINE
+    return {errno, std::system_category()};
+
+  return {};
 }
 
 } // namespace cloudbus::service
