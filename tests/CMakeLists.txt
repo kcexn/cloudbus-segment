@@ -1,14 +1,8 @@
 include(GoogleTest)
 
 set(TEST_NAMES
-  test_async_context
   test_generator
-  test_async_tcp_service
-  test_mock_socketpair
   test_segment_service
-  test_mock_setsockopt
-  test_mock_bind
-  test_mock_listen
 )
 
 foreach(TEST_NAME IN LISTS TEST_NAMES)

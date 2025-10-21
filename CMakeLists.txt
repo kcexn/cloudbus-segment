@@ -30,11 +30,21 @@ CPMAddPackage(
   "IO_BUILD_EXAMPLES OFF"
 )
 
+CPMAddPackage(
+  NAME cbnet
+  GITHUB_REPOSITORY kcexn/cloudbus-net
+  GIT_TAG v0.1.1
+  OPTIONS
+  "CB_NET_BUILD_EXAMPLES OFF"
+  "CB_NET_BUILD_TESTING OFF"
+)
+
 # Include directories for build and distribution.
 set(INCLUDE_DIRS
   "${CMAKE_SOURCE_DIR}/include/"
   "${CMAKE_BINARY_DIR}/_deps/stdexec-src/include/"
   "${CMAKE_BINARY_DIR}/_deps/asyncberkeley-src/include/"
+  "${CMAKE_BINARY_DIR}/_deps/cbnet-src/include/"
 )
 
 # Enable testing by default if this is a top-level project or

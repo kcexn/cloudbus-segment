@@ -1,5 +1,4 @@
 set(segmentlib_SOURCES
-  async_service.cpp
   segment_service.cpp
 )
 
