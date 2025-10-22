@@ -4,7 +4,7 @@
 #include <csignal>
 #include <thread>
 
-using namespace cloudbus::service;
+using namespace net::service;
 using namespace cloudbus::segment;
 
 using service_type = async_service<segment_service>;

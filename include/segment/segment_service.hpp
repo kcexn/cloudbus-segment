@@ -25,7 +25,7 @@
 namespace cloudbus::segment {
 /** @brief The service type to use. */
 template <typename TCPStreamHandler>
-using service_base = service::async_tcp_service<TCPStreamHandler>;
+using service_base = net::service::async_tcp_service<TCPStreamHandler>;
 
 /** @brief The Cloudbus segment service. */
 struct segment_service : public service_base<segment_service> {

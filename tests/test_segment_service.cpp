@@ -23,7 +23,7 @@
 #include <list>
 
 #include <arpa/inet.h>
-using namespace cloudbus::service;
+using namespace net::service;
 using namespace cloudbus::segment;
 
 class SegmentServiceTest : public ::testing::Test {};
