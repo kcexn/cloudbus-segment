@@ -24,7 +24,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME asyncberkeley
   GITHUB_REPOSITORY kcexn/async-berkeley
-  GIT_TAG v0.1.3
+  GIT_TAG v0.1.4
   OPTIONS
   "IO_BUILD_TESTING OFF"
   "IO_BUILD_EXAMPLES OFF"
@@ -33,7 +33,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME cbnet
   GITHUB_REPOSITORY kcexn/cloudbus-net
-  GIT_TAG v0.2.0
+  GIT_TAG v0.2.2
   OPTIONS
   "CPPNET_BUILD_EXAMPLES OFF"
   "CPPNET_BUILD_TESTING OFF"
